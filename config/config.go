@@ -3,6 +3,7 @@ package config
 import (
 	"log"
 	"os"
+	"strconv"
 
 	"github.com/joho/godotenv"
 )
@@ -13,6 +14,8 @@ var (
 	DatabaseName           string
 	CollectionNameDetik    string
 	CollectionNameLiputan6 string
+	DetikMaxPage           int
+	LiputanMaxPage         int
 )
 
 func LoadConfig() {
@@ -25,6 +28,15 @@ func LoadConfig() {
 	DatabaseName = os.Getenv("DATABASE_NAME")
 	CollectionNameDetik = os.Getenv("COLLECTION_NAME_DETIK")
 	CollectionNameLiputan6 = os.Getenv("COLLECTION_NAME_LIPUTAN")
+	DetikMaxPage, err = strconv.Atoi(os.Getenv("DETIK_MAX_PAGE"))
+	if err != nil {
+		log.Fatalf("Error converting DETIK_MAX_PAGE to int: %v", err)
+	}
+
+	LiputanMaxPage, err = strconv.Atoi(os.Getenv("LIPUTAN_MAX_PAGE"))
+	if err != nil {
+		log.Fatalf("Error converting LIPUTAN_MAX_PAGE to int: %v", err)
+	}
 }
 
 func init() {
