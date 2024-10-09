@@ -8,19 +8,9 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func CreateMongoDBConnection(host string, port string, databaseName string, collectionName string) (*mongo.Client, *mongo.Collection, error) {
-	mongoDBURI := fmt.Sprintf("mongodb://%s:%s", host, port)
-	client, collection, err := ConnectToMongoDB(mongoDBURI, databaseName, collectionName)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error establishing MongoDB connection: %v", err)
-	}
-
-	return client, collection, nil
-}
-
 func ConnectToMongoDB(uri string, databaseName string, collectionName string) (*mongo.Client, *mongo.Collection, error) {
 	fmt.Println("Connecting to database..")
-	clientOptions := options.Client().ApplyURI(uri)
+	clientOptions := options.Client().ApplyURI(uri) // Update the URI as needed
 	client, err := mongo.Connect(context.TODO(), clientOptions)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to connect to MongoDB: %v", err)
@@ -32,7 +22,7 @@ func ConnectToMongoDB(uri string, databaseName string, collectionName string) (*
 		return nil, nil, fmt.Errorf("failed to ping MongoDB: %v", err)
 	}
 
-	collection := client.Database(databaseName).Collection(collectionName)
+	collection := client.Database(databaseName).Collection(collectionName) // Change database and collection names as needed
 
 	return client, collection, nil
 }
