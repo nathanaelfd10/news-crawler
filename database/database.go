@@ -20,7 +20,7 @@ func CreateMongoDBConnection(host string, port string, databaseName string, coll
 
 func ConnectToMongoDB(uri string, databaseName string, collectionName string) (*mongo.Client, *mongo.Collection, error) {
 	fmt.Println("Connecting to database..")
-	clientOptions := options.Client().ApplyURI(uri) // Update the URI as needed
+	clientOptions := options.Client().ApplyURI(uri)
 	client, err := mongo.Connect(context.TODO(), clientOptions)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to connect to MongoDB: %v", err)
@@ -32,7 +32,7 @@ func ConnectToMongoDB(uri string, databaseName string, collectionName string) (*
 		return nil, nil, fmt.Errorf("failed to ping MongoDB: %v", err)
 	}
 
-	collection := client.Database(databaseName).Collection(collectionName) // Change database and collection names as needed
+	collection := client.Database(databaseName).Collection(collectionName)
 
 	return client, collection, nil
 }

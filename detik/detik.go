@@ -2,18 +2,20 @@ package main
 
 import (
 	"context"
-	cfg "detik-scraper/config"
-	db "detik-scraper/database"
-	m "detik-scraper/models"
-	u "detik-scraper/utils"
 	"fmt"
 	"log"
+	cfg "news-crawler/config"
+	db "news-crawler/database"
+	m "news-crawler/models"
+	u "news-crawler/utils"
+	"strings"
 	"time"
 
 	"github.com/gocolly/colly/v2"
 )
 
 func main() {
+	// Establish connection to MongoDB
 	client, collection, err := db.CreateMongoDBConnection(cfg.MongoDBHost, cfg.MongoDBPort, cfg.DatabaseName, cfg.CollectionNameDetik)
 	if err != nil {
 		log.Fatalf("Error establishing MongoDB connection: %v", err)
@@ -42,7 +44,6 @@ func main() {
 		}
 
 		article.Article.Content = content
-
 		articles = append(articles, article)
 	})
 
@@ -94,7 +95,7 @@ func extractDetikArticle(e *colly.HTMLElement) m.DetikArticle {
 			URL: e.ChildAttr(".media__title > a", "href"),
 			Preview: m.Preview[m.DetikExtraPreviewInfo]{
 				Title:        e.ChildText(".media__title > a"),
-				Thumbnail:    thumbnail,
+				Thumbnail:    thumbnail.Data,
 				ThumbnailURL: thumbnailURL,
 				ExtraPreviewInfo: m.DetikExtraPreviewInfo{
 					TimestampUTC: e.ChildAttr(".media__date > span", "d-time"),
@@ -118,17 +119,33 @@ func GetContent(url string) (m.Content[m.DetikExtraContentInfo], error) {
 		e.DOM.Find("style").Remove()
 
 		body := e.ChildText(".container .detail__body-text")
-		imageURL := e.ChildAttr(".content__bg [dtr-evt=\"cover image\"] img", "src")
-		image, err := u.GetImage(imageURL)
-		if err != nil {
-			log.Printf("Can't fetch image: %v\n", err)
-		}
+
+		// Fetch images
+		var images []m.Image
+		e.ForEach("figure.detail__media-image", func(_ int, el *colly.HTMLElement) {
+			url := el.ChildAttr("img", "src")
+			if url == "" {
+				url = el.ChildAttr("img", "data-lazy")
+			}
+
+			image, err := u.GetImage(url)
+			if err != nil {
+				errMsg := fmt.Errorf("failed to get image from %s: %w", url, err)
+				fmt.Println(errMsg)
+			}
+
+			if strings.Contains(url, "foto-news") {
+				image.Caption = el.ChildText("figcaption p")
+			} else {
+				image.Caption = el.ChildText("figcaption")
+			}
+			images = append(images, image)
+		})
 
 		content = m.Content[m.DetikExtraContentInfo]{
 			Author:      e.ChildText(".detail__author"),
 			FullTitle:   e.ChildText(".detail__title"),
-			ImageURL:    imageURL,
-			Image:       image,
+			Images:      images,
 			Content:     u.CleanText(body),
 			PublishedAt: e.ChildText(".detail__date"),
 			CrawledAt:   time.Now(),

@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
-	cfg "detik-scraper/config"
-	db "detik-scraper/database"
-	m "detik-scraper/models"
-	u "detik-scraper/utils"
 	"fmt"
 	"log"
+	cfg "news-crawler/config"
+	db "news-crawler/database"
+	m "news-crawler/models"
+	u "news-crawler/utils"
 	"time"
 
 	"github.com/gocolly/colly/v2"
@@ -29,16 +29,14 @@ func main() {
 
 	c.OnHTML("#indeks-articles article", func(e *colly.HTMLElement) {
 		article := extractLiputanArticle(e)
-		articleURL := article.Article.URL
 		fmt.Println("Found: ", article.Article.Preview.Title)
 
-		content, err := GetContent(articleURL)
+		content, err := GetContent(article.Article.URL)
 		if err != nil {
-			fmt.Printf("Can't fetch article: %s. %v\n", articleURL, err)
+			fmt.Printf("Can't fetch article: %s. %v\n", article.Article.URL, err)
 		}
 
 		article.Article.Content = content
-
 		articles = append(articles, article)
 	})
 
@@ -70,10 +68,9 @@ func main() {
 		}
 
 		if currentPage == maxPages {
-			fmt.Printf("Reached max page %d\n", cfg.LiputanMaxPage)
+			fmt.Printf("Reached max page (%d)\n", cfg.LiputanMaxPage)
 			break
 		}
-
 	}
 
 	fmt.Println("Crawling completed.")
@@ -91,8 +88,8 @@ func extractLiputanArticle(e *colly.HTMLElement) m.LiputanArticle {
 			URL: e.ChildAttr("[data-template-var=\"url\"]", "href"),
 			Preview: m.Preview[m.LiputanExtraPreviewInfo]{
 				Title:        e.ChildText("[data-template-var=\"title\"]"),
-				Thumbnail:    thumbnail,
-				ThumbnailURL: thumbnailURL,
+				Thumbnail:    thumbnail.Data,
+				ThumbnailURL: thumbnail.URL,
 				ExtraPreviewInfo: m.LiputanExtraPreviewInfo{
 					Description: e.ChildText("[data-template-var=\"summary\"]"),
 					Category:    e.ChildText("[data-template-var=\"category\"]"),
@@ -121,14 +118,14 @@ func GetContent(url string) (m.Content[m.LiputanExtraContentInfo], error) {
 			log.Printf("Can't fetch image: %s\n", err)
 		}
 
+		image.Caption = e.ChildText(".read-page--top-media figcaption.read-page--photo-gallery--item__caption")
+
 		content = m.Content[m.LiputanExtraContentInfo]{
-			Author:       e.ChildText("[class=\"read-page--header--author__name fn\"]"),
-			FullTitle:    e.ChildText("h1[itemprop=\"headline\"]"),
-			ImageURL:     imageURL,
-			Image:        image,
-			ImageCaption: e.ChildText(".read-page--top-media figcaption[class=\"read-page--photo-gallery--item__caption\"]"),
-			Content:      u.CleanText(body),
-			PublishedAt:  e.ChildText("time[itemprop=\"datePublished\"]"),
+			Author:      e.ChildText("[class=\"read-page--header--author__name fn\"]"),
+			FullTitle:   e.ChildText("h1[itemprop=\"headline\"]"),
+			Images:      []m.Image{image},
+			Content:     u.CleanText(body),
+			PublishedAt: e.ChildText("time[itemprop=\"datePublished\"]"),
 			ExtraContentInfo: m.LiputanExtraContentInfo{
 				UpdatedAt: e.ChildText("time[itemprop=\"dateModified\"]"),
 			},

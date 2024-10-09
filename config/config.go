@@ -18,6 +18,15 @@ var (
 	LiputanMaxPage         int
 )
 
+func getEnvAsInt(key string) int {
+	valueStr := os.Getenv(key)
+	value, err := strconv.Atoi(valueStr)
+	if err != nil {
+		log.Fatalf("Error converting %s to int: %v", key, err)
+	}
+	return value
+}
+
 func LoadConfig() {
 	err := godotenv.Load(".env")
 	if err != nil {
@@ -28,15 +37,8 @@ func LoadConfig() {
 	DatabaseName = os.Getenv("DATABASE_NAME")
 	CollectionNameDetik = os.Getenv("COLLECTION_NAME_DETIK")
 	CollectionNameLiputan6 = os.Getenv("COLLECTION_NAME_LIPUTAN")
-	DetikMaxPage, err = strconv.Atoi(os.Getenv("DETIK_MAX_PAGE"))
-	if err != nil {
-		log.Fatalf("Error converting DETIK_MAX_PAGE to int: %v", err)
-	}
-
-	LiputanMaxPage, err = strconv.Atoi(os.Getenv("LIPUTAN_MAX_PAGE"))
-	if err != nil {
-		log.Fatalf("Error converting LIPUTAN_MAX_PAGE to int: %v", err)
-	}
+	DetikMaxPage = getEnvAsInt("DETIK_MAX_PAGE")
+	LiputanMaxPage = getEnvAsInt("LIPUTAN_MAX_PAGE")
 }
 
 func init() {

@@ -34,12 +34,16 @@ type Content[T any] struct {
 	FullTitle        string    `bson:"full_title"`
 	Content          string    `bson:"content"`
 	Author           string    `bson:"author"`
-	ImageURL         string    `bson:"image_url"`
-	Image            []byte    `bson:"image"`
-	ImageCaption     string    `bson:"image_caption"`
+	Images           []Image   `bson:"images"`
 	ExtraContentInfo T         `bson:"extra_content_info"`
 	PublishedAt      string    `bson:"published_at"`
 	CrawledAt        time.Time `bson:"crawled_at"`
+}
+
+type Image struct {
+	URL     string `bson:"url"`
+	Data    []byte `bson:"data"`
+	Caption string `bson:"caption"`
 }
 
 type Article[P any, C any] struct {
