@@ -9,6 +9,7 @@ import (
 	m "news-crawler/models"
 	u "news-crawler/utils"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gocolly/colly/v2"
@@ -33,18 +34,31 @@ func main() {
 		fmt.Println("Crawling", r.URL.String())
 	})
 
+	var wg sync.WaitGroup
+	var mutex sync.Mutex
+
 	c.OnHTML("article.list-content__item", func(e *colly.HTMLElement) {
-		article := extractDetikArticle(e)
-		articleURL := article.Article.URL
-		fmt.Println("Found: ", article.Article.Preview.Title)
+		wg.Add(1)
 
-		content, err := GetContent(articleURL)
-		if err != nil {
-			fmt.Printf("Can't fetch article: %s. %v\n", articleURL, err)
-		}
+		go func() {
+			defer wg.Done()
 
-		article.Article.Content = content
-		articles = append(articles, article)
+			article := extractDetikArticle(e)
+			articleURL := article.Article.URL
+			fmt.Println("Found: ", article.Article.Preview.Title)
+
+			content, err := GetContent(articleURL)
+			if err != nil {
+				fmt.Printf("Can't fetch article: %s. %v\n", articleURL, err)
+				return
+			}
+
+			article.Article.Content = content
+			mutex.Lock()
+			articles = append(articles, article)
+			mutex.Unlock()
+		}()
+
 	})
 
 	for {
@@ -59,6 +73,8 @@ func main() {
 			log.Printf("Error visiting page %d: %s\n", currentPage, err)
 			break
 		}
+
+		wg.Wait()
 
 		if len(articles) == 0 {
 			fmt.Println("No more article found in page.")

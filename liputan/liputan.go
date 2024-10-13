@@ -8,18 +8,69 @@ import (
 	db "news-crawler/database"
 	m "news-crawler/models"
 	u "news-crawler/utils"
+	"sync"
 	"time"
 
 	"github.com/gocolly/colly/v2"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func main() {
-	client, collection, err := db.CreateMongoDBConnection(cfg.MongoDBHost, cfg.MongoDBPort, cfg.DatabaseName, cfg.CollectionNameLiputan6)
-	if err != nil {
-		log.Fatalf("Error establishing MongoDB connection: %v", err)
-	}
-	defer client.Disconnect(context.TODO())
+func crawlIndex(collection *mongo.Collection) {
+	log.Println("Crawling index..")
 
+	c := colly.NewCollector()
+
+	var wg sync.WaitGroup
+	var mutex sync.Mutex
+
+	var articles []m.LiputanArticle
+
+	c.OnHTML("[data-article-id]", func(e *colly.HTMLElement) {
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+
+			article := m.LiputanArticle{
+				Article: m.Article[m.LiputanExtraPreviewInfo, m.LiputanExtraContentInfo]{
+					URL: fmt.Sprintf("https://www.liputan6.com/news/read/%s", e.Attr("data-article-id")),
+					Preview: m.Preview[m.LiputanExtraPreviewInfo]{
+						Title: e.Attr("data-title"),
+					},
+				},
+			}
+
+			fmt.Println("Found: ", article.Article.Preview.Title)
+
+			content, err := GetContent(article.Article.URL)
+			if err != nil {
+				fmt.Printf("Can't fetch article: %s. %v\n", article.Article.URL, err)
+			}
+
+			article.Article.Content = content
+
+			mutex.Lock()
+			articles = append(articles, article)
+			mutex.Unlock()
+		}()
+	})
+
+	c.Visit("https://www.liputan6.com/")
+
+	// Wait until all articles have finished crawling
+	wg.Wait()
+
+	if len(articles) == 0 {
+		fmt.Println("No articles found in page.")
+		return
+	}
+
+	saveArticlesToDb(articles, collection)
+
+	log.Println("Done crawling index")
+}
+
+func crawlPagination(collection *mongo.Collection) {
 	c := colly.NewCollector()
 
 	maxPages := cfg.LiputanMaxPage // Set to 0 for infinite crawling
@@ -27,17 +78,29 @@ func main() {
 
 	var articles []m.LiputanArticle
 
+	var wg sync.WaitGroup
+	var mutex sync.Mutex
+
 	c.OnHTML("#indeks-articles article", func(e *colly.HTMLElement) {
-		article := extractLiputanArticle(e)
-		fmt.Println("Found: ", article.Article.Preview.Title)
+		wg.Add(1)
 
-		content, err := GetContent(article.Article.URL)
-		if err != nil {
-			fmt.Printf("Can't fetch article: %s. %v\n", article.Article.URL, err)
-		}
+		go func() {
+			defer wg.Done()
 
-		article.Article.Content = content
-		articles = append(articles, article)
+			article := extractLiputanArticle(e)
+			fmt.Println("Found: ", article.Article.Preview.Title)
+
+			content, err := GetContent(article.Article.URL)
+			if err != nil {
+				fmt.Printf("Can't fetch article: %s. %v\n", article.Article.URL, err)
+			}
+
+			article.Article.Content = content
+
+			mutex.Lock()
+			articles = append(articles, article)
+			mutex.Unlock()
+		}()
 	})
 
 	for {
@@ -53,27 +116,46 @@ func main() {
 			break
 		}
 
+		wg.Wait()
+
 		if len(articles) == 0 {
 			fmt.Println("No more article found in page.")
 			break
 		}
 
-		// Save each articles to database.
-		for _, article := range articles {
-			_, err = collection.InsertOne(context.TODO(), article)
-			if err != nil {
-				log.Printf("\tFailed to insert article: %s", err)
-				return
-			}
-		}
+		saveArticlesToDb(articles, collection)
 
 		if currentPage == maxPages {
 			fmt.Printf("Reached max page (%d)\n", cfg.LiputanMaxPage)
 			break
 		}
 	}
+}
 
-	fmt.Println("Crawling completed.")
+func saveArticlesToDb(articles []m.LiputanArticle, collection *mongo.Collection) {
+	for _, article := range articles {
+		_, err := collection.InsertOne(context.TODO(), article)
+		if err != nil {
+			log.Printf("\tFailed to insert article: %s", err)
+			return
+		}
+	}
+}
+
+func main() {
+	client, collection, err := db.CreateMongoDBConnection(cfg.MongoDBHost, cfg.MongoDBPort, cfg.DatabaseName, cfg.CollectionNameLiputan6)
+	if err != nil {
+		log.Fatalf("Error establishing MongoDB connection: %v", err)
+	}
+	defer client.Disconnect(context.TODO())
+
+	log.Println("Crawling index..")
+	crawlIndex(collection)
+
+	log.Println("Crawling pagination..")
+	crawlPagination(collection)
+
+	fmt.Println("Crawling finished.")
 }
 
 func extractLiputanArticle(e *colly.HTMLElement) m.LiputanArticle {
