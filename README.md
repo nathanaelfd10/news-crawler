@@ -11,7 +11,7 @@ This project is a **web crawler** developed in Golang that collects news article
 
 ## Prerequisites
 
-- **Go**: Ensure Go is installed on your system. You can download it from [golang.org/dl](https://golang.org/dl/).
+- **Go**: Ensure Go is installed on your system. You can download it from [go.dev/dl](https://go.dev/dl/).
 - **Database**: Configure the necessary database settings in the `.env` file.
 
 ## Project Structure
