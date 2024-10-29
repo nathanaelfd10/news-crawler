@@ -94,5 +94,3 @@ This project is licensed under the MIT License.
 For any questions, feel free to reach out to the project maintainer.
 
 ---
-
-This README provides a solid starting point for understanding, configuring, and running the web crawler project.
