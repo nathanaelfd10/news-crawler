@@ -73,7 +73,7 @@ To add a new news source:
 
 This project relies on Go packages listed in `go.mod` and `go.sum`. To install dependencies, run:
 
-    ```go mod tidy```
+    go mod tidy
 
 ## Contributing
 
