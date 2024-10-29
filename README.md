@@ -1,5 +1,3 @@
-Thanks for the tip! Here’s the revised version without triple backticks for bash commands.
-
 # News Web Crawler
 
 This project is a **web crawler** developed in Golang that collects news articles from multiple sources, currently including **Detik** and **Liputan** news sites. It extracts and stores the collected data, making it easier to work with and analyze news content programmatically.
@@ -33,28 +31,26 @@ This project is a **web crawler** developed in Golang that collects news article
 
 ### 1. Clone the Repository
 
-    ```
     git clone <repository_url>
     cd news-crawler-main
-    ```
 
 ### 2. Set up Environment Variables
 
 Use the provided `.env_template` to create a `.env` file with the necessary configurations. Modify the values as needed.
 
-    ```cp .env_template .env```
+    cp .env_template .env
 
 ### 3. Install Dependencies
 
 Ensure all dependencies are installed by running:
 
-    ```go mod tidy```
+    go mod tidy
 
 ### 4. Run the Crawler
 
 Start the crawler by running:
 
-    ```go run main.go```
+    go run main.go
 
 This will start the application, connecting to the specified news sites and saving data to your configured database.
 
